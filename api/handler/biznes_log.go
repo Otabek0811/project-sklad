@@ -30,7 +30,7 @@ func (h *handler) Scan_Barcode(c *gin.Context) {
 		return
 	}
 
-	check, err := h.strg.Coming().GetByID(c.Request.Context(),&models.ComingPrimaryKey{
+	check, err := h.strg.Coming().GetByID(c.Request.Context(), &models.ComingPrimaryKey{
 		Id: scanBarcode.ComingID,
 	})
 
@@ -39,8 +39,8 @@ func (h *handler) Scan_Barcode(c *gin.Context) {
 		return
 	}
 
-	if check !=nil {
-		h.handlerResponse(c, "Not Found This Coming", http.StatusOK, nil)
+	if check == nil {
+		h.handlerResponse(c, "Not Found This Coming", http.StatusInternalServerError, nil)
 		return
 	}
 	if check.Status == "finished" {
@@ -55,11 +55,10 @@ func (h *handler) Scan_Barcode(c *gin.Context) {
 		return
 	}
 
-	response.ComingID=scanBarcode.ComingID
-	response.Name=resp.Products[0].Name
-	response.Barcode=scanBarcode.Barcode
-	response.CategoryId=resp.Products[0].CategoryId
+	response.ComingID = scanBarcode.ComingID
+	response.Name = resp.Products[0].Name
+	response.Barcode = scanBarcode.Barcode
+	response.CategoryId = resp.Products[0].CategoryId
 
-	
 	h.handlerResponse(c, "scan get list product response", http.StatusOK, response)
 }

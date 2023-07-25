@@ -104,7 +104,6 @@ func (r *comingRepo) GetByID(ctx context.Context, req *models.ComingPrimaryKey) 
 		FROM coming 
 		WHERE id = $1`
 
-	fmt.Println(req.Id)
 	err := r.db.QueryRow(ctx, query, req.Id).Scan(
 		&id,
 		&coming_id,
@@ -116,6 +115,7 @@ func (r *comingRepo) GetByID(ctx context.Context, req *models.ComingPrimaryKey) 
 	)
 
 	if err != nil {
+		
 		return nil, err
 	}
 	return &models.Coming{
