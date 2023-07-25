@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS coming_products;
