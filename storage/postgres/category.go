@@ -23,6 +23,19 @@ func NewCategoryRepo(db *pgxpool.Pool) *categoryRepo {
 
 func (r *categoryRepo) Create(ctx context.Context, req *models.CreateCategory) (string, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+
 	var (
 		id    = uuid.New().String()
 		query string
@@ -33,7 +46,7 @@ func (r *categoryRepo) Create(ctx context.Context, req *models.CreateCategory) (
 		VALUES ($1, $2, $3, NOW())
 	`
 
-	_, err := r.db.Exec(ctx, query,
+	_, err = trx.Exec(ctx, query,
 		id,
 		req.Title,
 		helper.NewNullString(req.ParentID),
@@ -166,6 +179,18 @@ func (r *categoryRepo) GetList(ctx context.Context, req *models.CategoryGetListR
 
 func (r *categoryRepo) Update(ctx context.Context, req *models.UpdateCategory) (int64, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
 	var (
 		query  string
 		params map[string]interface{}
@@ -189,7 +214,7 @@ func (r *categoryRepo) Update(ctx context.Context, req *models.UpdateCategory) (
 
 	query, args := helper.ReplaceQueryParams(query, params)
 
-	result, err := r.db.Exec(ctx, query, args...)
+	result, err := trx.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -199,7 +224,19 @@ func (r *categoryRepo) Update(ctx context.Context, req *models.UpdateCategory) (
 
 func (r *categoryRepo) Delete(ctx context.Context, req *models.CategoryPrimaryKey) error {
 
-	_, err := r.db.Exec(ctx, "DELETE FROM category WHERE id = $1", req.Id)
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return  nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+	_, err = trx.Exec(ctx, "DELETE FROM category WHERE id = $1", req.Id)
 	if err != nil {
 		return err
 	}

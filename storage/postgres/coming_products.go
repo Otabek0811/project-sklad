@@ -136,6 +136,19 @@ func (r *comingProductsRepo) GetByID(ctx context.Context, req *models.ComingProd
 
 func (r *comingProductsRepo) GetList(ctx context.Context, req *models.ComingProductsGetListRequest) (*models.ComingProductsGetListResponse, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+
 	var (
 		resp   = &models.ComingProductsGetListResponse{}
 		query  string
@@ -180,13 +193,11 @@ func (r *comingProductsRepo) GetList(ctx context.Context, req *models.ComingProd
 
 	query += where + offset + limit
 
-	fmt.Println(query)
-	rows, err := r.db.Query(ctx, query)
+	rows, err := trx.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("\n\n\n\n")
-
+	
 	for rows.Next() {
 		var (
 			id          sql.NullString
@@ -266,7 +277,7 @@ func (r *comingProductsRepo) GetByComingID(ctx context.Context, req *models.Comi
 		FROM coming_products 
 		WHERE coming_id = $1`
 
-	fmt.Println(req.Id)
+	
 	err := r.db.QueryRow(ctx, query, req.Id).Scan(
 		&id,
 		&comingID,
@@ -355,6 +366,18 @@ func (r *comingProductsRepo) Update(ctx context.Context, req *models.UpdateComin
 
 func (r *comingProductsRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
 	var (
 		query string
 		set   string
@@ -378,7 +401,7 @@ func (r *comingProductsRepo) Patch(ctx context.Context, req *models.PatchRequest
 	req.Fields["id"] = req.ID
 
 	query, args := helper.ReplaceQueryParams(query, req.Fields)
-	result, err := r.db.Exec(ctx, query, args...)
+	result, err := trx.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -388,7 +411,19 @@ func (r *comingProductsRepo) Patch(ctx context.Context, req *models.PatchRequest
 
 func (r *comingProductsRepo) Delete(ctx context.Context, req *models.ComingProductsPrimaryKey) error {
 
-	_, err := r.db.Exec(ctx, "DELETE FROM coming_products WHERE id = $1", req.Id)
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return  nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+	_, err = trx.Exec(ctx, "DELETE FROM coming_products WHERE id = $1", req.Id)
 	if err != nil {
 		return err
 	}

@@ -62,55 +62,7 @@ func (r *productRepo) Create(ctx context.Context, req *models.CreateProduct) (st
 
 	return id, nil
 }
-// func (r *productRepo) GetByBarcode(ctx context.Context, req *models.ProductBarcodeKey) (*models.Product, error) {
 
-// 	var (
-// 		query string
-// 		id         sql.NullString
-// 		name       sql.NullString
-// 		price      sql.NullFloat64
-// 		categoryID sql.NullString
-// 		barcode    sql.NullString
-// 		createdAt  sql.NullString
-// 		updatedAt  sql.NullString
-// 	)
-
-// 	query = `
-// 		select 
-// 			id,
-// 			name,
-// 			price,
-// 			barcode,
-// 			category_id,
-// 			created_at,
-// 			updated_at
-// 		FROM product 
-// 		WHERE barcode = $1`
-
-// 	fmt.Println(req.Barcode)
-// 	err := r.db.QueryRow(ctx, query, req.Barcode).Scan(
-// 		&id,
-// 		&name,
-// 		&price,
-// 		&barcode,
-// 		&categoryID,
-// 		&createdAt,
-// 		&updatedAt,
-// 	)
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return &models.Product{
-// 		Id:         id.String,
-// 		Name:       name.String,
-// 		Price:      price.Float64,
-// 		Barcode:    barcode.String,
-// 		CategoryId: categoryID.String,
-// 		CreatedAt:  createdAt.String,
-// 		UpdatedAt:  updatedAt.String,
-// 	}, nil
-// }
 
 func (r *productRepo) GetByID(ctx context.Context, req *models.ProductPrimaryKey) (*models.Product, error) {
 
@@ -301,6 +253,18 @@ func (r *productRepo) Update(ctx context.Context, req *models.UpdateProduct) (in
 
 func (r *productRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
 	var (
 		query string
 		set   string
@@ -324,7 +288,7 @@ func (r *productRepo) Patch(ctx context.Context, req *models.PatchRequest) (int6
 	req.Fields["id"] = req.ID
 
 	query, args := helper.ReplaceQueryParams(query, req.Fields)
-	result, err := r.db.Exec(ctx, query, args...)
+	result, err := trx.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -334,7 +298,19 @@ func (r *productRepo) Patch(ctx context.Context, req *models.PatchRequest) (int6
 
 func (r *productRepo) Delete(ctx context.Context, req *models.ProductPrimaryKey) error {
 
-	_, err := r.db.Exec(ctx, "DELETE FROM product WHERE id = $1", req.Id)
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+	_, err = trx.Exec(ctx, "DELETE FROM product WHERE id = $1", req.Id)
 	if err != nil {
 		return err
 	}

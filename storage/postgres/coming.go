@@ -131,6 +131,7 @@ func (r *comingRepo) GetByID(ctx context.Context, req *models.ComingPrimaryKey) 
 
 func (r *comingRepo) GetList(ctx context.Context, req *models.ComingGetListRequest) (*models.ComingGetListResponse, error) {
 
+
 	var (
 		resp   = &models.ComingGetListResponse{}
 		query  string
@@ -266,13 +267,6 @@ func (r *comingRepo) Update(ctx context.Context, req *models.UpdateComing) (int6
 		}
 
 	}
-	// params = map[string]interface{}{
-	// 	"id":        req.Id,
-	// 	"coming_id": req.ComingID,
-	// 	"filial_id": req.FilialID,
-	// 	"date_time": req.DateTime,
-	// 	"status":    req.Status,
-	// }
 
 	query, args := helper.ReplaceQueryParams(query, params)
 
@@ -285,6 +279,19 @@ func (r *comingRepo) Update(ctx context.Context, req *models.UpdateComing) (int6
 }
 
 func (r *comingRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64, error) {
+
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
 
 	var (
 		query string
@@ -309,7 +316,7 @@ func (r *comingRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64
 	req.Fields["id"] = req.ID
 
 	query, args := helper.ReplaceQueryParams(query, req.Fields)
-	result, err := r.db.Exec(ctx, query, args...)
+	result, err := trx.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -319,7 +326,20 @@ func (r *comingRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64
 
 func (r *comingRepo) Delete(ctx context.Context, req *models.ComingPrimaryKey) error {
 
-	_, err := r.db.Exec(ctx, "DELETE FROM coming WHERE id = $1", req.Id)
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+
+	_, err = trx.Exec(ctx, "DELETE FROM coming WHERE id = $1", req.Id)
 	if err != nil {
 		return err
 	}

@@ -236,6 +236,18 @@ func (r *filialRepo) Update(ctx context.Context, req *models.UpdateFilial) (int6
 
 func (r *filialRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64, error) {
 
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
 	var (
 		query string
 		set   string
@@ -259,7 +271,7 @@ func (r *filialRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64
 	req.Fields["id"] = req.ID
 
 	query, args := helper.ReplaceQueryParams(query, req.Fields)
-	result, err := r.db.Exec(ctx, query, args...)
+	result, err := trx.Exec(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -269,7 +281,20 @@ func (r *filialRepo) Patch(ctx context.Context, req *models.PatchRequest) (int64
 
 func (r *filialRepo) Delete(ctx context.Context, req *models.FilialPrimaryKey) error {
 
-	_, err := r.db.Exec(ctx, "DELETE FROM filial WHERE id = $1", req.Id)
+	trx, err := r.db.Begin(ctx)
+	if err != nil {
+		return  nil
+	}
+
+	defer func() {
+		if err != nil {
+			trx.Rollback(ctx)
+		} else {
+			trx.Commit(ctx)
+		}
+	}()
+
+	_, err = trx.Exec(ctx, "DELETE FROM filial WHERE id = $1", req.Id)
 	if err != nil {
 		return err
 	}
